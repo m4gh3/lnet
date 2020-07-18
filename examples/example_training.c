@@ -9,7 +9,7 @@ const int outputs = 20;
 const int final_outputs = 1;
 const int ev_steps = 10;
 
-void taylor_merge(mmatrix_ut *gradient, size_t arrlen, size_t mergelen )
+void gradient_taylor_merge(mmatrix_ut *gradient, size_t arrlen, size_t mergelen )
 {
 	for(size_t i=0; i < 3; i++ )
 	{
@@ -20,6 +20,23 @@ void taylor_merge(mmatrix_ut *gradient, size_t arrlen, size_t mergelen )
 			v=-v;
 		}
 	}
+}
+
+float taylor_merge(matrix_ut *values, size_t arrlen, size_t mergelen )
+{
+	float v=1, retval=0;
+	for(size_t j=0; j < mergelen; j++ )
+	{
+		retval += values->data[j]*v;
+		v=-v;
+	}
+	return retval;
+}
+
+float triangle(float x, int i )
+{
+	if(!i) return x;
+	return x < 0.5 ? triangle(2*x, i-1 ) : triangle(-2*x+2, i-1 );
 }
 
 typedef struct
@@ -33,8 +50,8 @@ float lnn_plot(float x, lnn_ut *lnn )
 {
 	set_matrix_scalar(&lnn->input, 0 );
 	lnn->input.data[0] = x;
-	lnn->input.data[1] = lnn->input.data[0] > 0.5 ? 1 : 0;
-	lnn->input.data[0] = 2*fmod(x, 0.5 );
+	lnn->input.data[1] = triangle(x, 1 ); //lnn->input.data[0] > 0.5 ? 1 : 0;
+	//lnn->input.data[0] = 2*fmod(x, 0.5 );
 		
 	for(size_t ev_step=0; ev_step < ev_steps; ev_step++ )
 	{
@@ -52,7 +69,12 @@ float lnn_plot(float x, lnn_ut *lnn )
 }
 
 float expected_plot(float x, void *data )
-{ return 0.001*sin(2*M_PI*x*x); }
+{ return 0.001/(1+exp(-8*x+4)); /*0.001*sin(2*M_PI*x*x);*/ }
+
+float triangle_plot(float x, void *data )
+{
+	return 0.001*triangle(x, 1 );
+}
 
 int main()
 {
@@ -146,9 +168,10 @@ int main()
 
 		set_matrix_scalar(&lnn.input, 0 );
 		lnn.input.data[0] = (float)rand()/(float)RAND_MAX;
-		float expected = 0.001*sin(2*M_PI*lnn.input.data[0]*lnn.input.data[0]);
-		lnn.input.data[1] = lnn.input.data[0] > 0.5 ? 1 : 0;
-		lnn.input.data[0] = 2*fmod(lnn.input.data[0], 0.5 );
+		//float expected = 0.001*sin(2*M_PI*lnn.input.data[0]*lnn.input.data[0]);
+		float expected = 0.001/(1+exp(-8*lnn.input.data[0]+4));
+		lnn.input.data[1] = triangle(lnn.input.data[0], 1 ); //lnn.input.data[0] > 0.5 ? 1 : 0;
+		//lnn.input.data[0] = 2*fmod(lnn.input.data[0], 0.5 );
 
 		for(size_t i=0; i < 3; i++ )
 			set_mmatrix_scalar(&in_gradient[i], 0 );
@@ -187,13 +210,8 @@ int main()
 			}
 			memcpy(lnn.input.data+inputs, lnn.output.data, lnn.output.size[0]*sizeof(float) );
 		}
-		
-		/*printf("expected: %f, predicted: %f, error: %f\n\n",
-				expected, lnn.output.data[0]-lnn.output.data[1]+lnn.output.data[2]-lnn.output.data[3],
-				expected-lnn.output.data[0]+lnn.output.data[1]-lnn.output.data[2]+lnn.output.data[3]
-		);*/
-
-		taylor_merge(gradient, 3, 6 );
+			
+		gradient_taylor_merge(gradient, 3, 4 );
 
 		float sqsum=0;
 		for(size_t i=0; i < 3; i++ )
@@ -205,7 +223,7 @@ int main()
 		for(size_t i=0; i < 3; i++ )
 		{
 			array_scale_up(mom_gradient[i].data, 0.9, gradient[i].size[1] );
-			array_step(mom_gradient[i].data, gradient[i].data, 0.1*(expected-lnn.output.data[0]+lnn.output.data[1]-lnn.output.data[2]+lnn.output.data[3]), gradient[i].size[1] );
+			array_step(mom_gradient[i].data, gradient[i].data, 0.1*(expected-taylor_merge(&lnn.output, 3, 4 )), gradient[i].size[1] );
 			array_step(lnn.weights[i].data, mom_gradient[i].data, 1, gradient[i].size[1] );
 
 			for(size_t j=0; j < lnn.weights[i].size[0]; j+=lnn.weights[i].size[1] )
@@ -222,8 +240,10 @@ int main()
 	png_buffer_ut png_buf = (png_buffer_ut){ .pixel_size=3, .width=256, .height=256, .depth=8  };
 	png_buffer_init(&png_buf);
 
-	plot(&png_buf, 0, 1, -0.002, 0.002, 0, 255, 0, 255, lnn_plot, &lnn, 0x0000ff );
-	plot(&png_buf, 0, 1, -0.002, 0.002, 0, 255, 0, 255, expected_plot, NULL, 0xff0000 );
+	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 255, 0, 255, lnn_plot, &lnn, 0x0000ff );
+	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 255, 0, 255, expected_plot, NULL, 0xff0000 );
+	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 255, 0, 255, triangle_plot, NULL, 0x00ff00 );
+
 
 	write_png_buf("result.png", &png_buf );
 
@@ -234,3 +254,4 @@ int main()
 	fclose(weights_file);
 	} //end while
 }
+
