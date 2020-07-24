@@ -1,3 +1,8 @@
+#include <stddef.h>
+
+#ifndef __L_NETSORE__
+#define __L_NETSORE__
+
 typedef struct
 {
 	size_t header_len;
@@ -8,3 +13,5 @@ typedef struct
 {
 	size_t inputs, outputs, stepsn;
 } lnet_layer_header_ut;
+
+#endif
