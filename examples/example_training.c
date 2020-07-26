@@ -47,6 +47,37 @@ float triangle_plot(float x, void *data )
 	return 0.001*triangle(x, 1 );
 }
 
+void lnn_gradient_step(mmatrix_ut *mom_gradient, mmatrix_ut *gradient, size_t gradient_offs, lnn_ut *lnn )
+{
+	float sqsum=0;
+	for(size_t i=0; i < 3; i++ )
+	{
+		float *gradient_data = gradient[i].data + gradient[i].size[1]*gradient_offs;
+       		sqsum += array_squares_sum(gradient_data, gradient[i].size[1] );
+	}
+	sqsum = sqrt(sqsum);
+	if(sqsum)
+	{
+		for(size_t i=0; i < 3; i++ )
+			array_scale_down(gradient[i].data, sqsum, gradient[i].size[1] );
+		
+		for(size_t i=0; i < 3; i++ )
+		{
+			float *gradient_data = gradient[i].data + gradient[i].size[1]*gradient_offs;
+			array_scale_up(mom_gradient[i].data, 0.9, gradient[i].size[1] );
+			array_step(mom_gradient[i].data, gradient_data, 0.1, gradient[i].size[1] );
+			array_step(lnn->weights[i].data, mom_gradient[i].data, 1, gradient[i].size[1] );
+
+			for(size_t j=0; j < lnn->weights[i].size[0]; j+=lnn->weights[i].size[1] )
+			{
+				array_abs(lnn->weights[i].data+j, lnn->weights[i].size[1] );
+				float f = array_sum(lnn->weights[i].data+j, lnn->weights[i].size[1] );
+				array_scale_down(lnn->weights[i].data+j, f, lnn->weights[i].size[1] );
+			}
+		}
+	}
+}
+
 int main()
 {
 
@@ -182,7 +213,13 @@ int main()
 			memcpy(lnn.input.data+inputs, lnn.output.data, lnn.output.size[0]*sizeof(float) );
 		}
 			
-		gradient_taylor_merge(gradient, 3, 4 );
+		gradient_taylor_merge(gradient, 0, 4 );
+		lnn.output.data[0] = taylor_merge(&lnn.output, 0, 4 );
+
+		size_t merge_offsets[1] = {0};
+
+		//output_gradients_merge(&expected, &lnn.output, gradient, 1, merge_offsets );
+		//lnn_gradient_step(mom_gradient, gradient, 0, &lnn );
 
 		float sqsum=0;
 		for(size_t i=0; i < 3; i++ )
@@ -194,7 +231,7 @@ int main()
 		for(size_t i=0; i < 3; i++ )
 		{
 			array_scale_up(mom_gradient[i].data, 0.9, gradient[i].size[1] );
-			array_step(mom_gradient[i].data, gradient[i].data, 0.1*(expected-taylor_merge(&lnn.output, 3, 4 )), gradient[i].size[1] );
+			array_step(mom_gradient[i].data, gradient[i].data, 0.1*(expected-lnn.output.data[0]/*taylor_merge(&lnn.output, 0, 4 )*/), gradient[i].size[1] );
 			array_step(lnn.weights[i].data, mom_gradient[i].data, 1, gradient[i].size[1] );
 
 			for(size_t j=0; j < lnn.weights[i].size[0]; j+=lnn.weights[i].size[1] )

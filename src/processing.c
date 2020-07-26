@@ -1,36 +1,40 @@
 #include "../include/processing.h"
 
-void gradient_taylor_merge(mmatrix_ut *gradient, size_t arrlen, size_t mergelen )
+void gradient_taylor_merge(mmatrix_ut *gradient, size_t mergestart, size_t mergelen )
 {
 	for(size_t i=0; i < 3; i++ )
 	{
 		float v=-1;
 		for(size_t j=1; j < mergelen; j++ )
 		{
-			array_step(gradient[i].data, gradient[i].data+gradient[i].size[1]*j, v, gradient[i].size[1] );
+			array_step(gradient[i].data+gradient[i].size[1]*mergestart, gradient[i].data+gradient[i].size[1]*(j+mergestart), v, gradient[i].size[1] );
 			v=-v;
 		}
 	}
 }
 
-float taylor_merge(matrix_ut *values, size_t arrlen, size_t mergelen )
+float taylor_merge(matrix_ut *values, size_t mergestart, size_t mergelen )
 {
 	float v=1, retval=0;
 	for(size_t j=0; j < mergelen; j++ )
 	{
-		retval += values->data[j]*v;
+		retval += values->data[j+mergestart]*v;
 		v=-v;
 	}
 	return retval;
 }
 
-void output_gradients_merge(float *expected_vals, matrix_ut *outputs, mmatrix_ut *gradient, size_t arrlen, size_t mergelen )
+void output_gradients_merge(float *expected_vals, matrix_ut *outputs, mmatrix_ut *gradient, size_t mergelen, size_t *merge_offsets )
 {
 	for(size_t i=0; i < 3; i++ )
 	{
-		array_scale_up(gradient[i].data, expected_vals[0]-outputs->data[0], gradient[i].size[1] );
+		float *data_0 = gradient[i].data + merge_offsets[0]*gradient[i].size[1];
+		array_scale_up(data_0, expected_vals[0]-outputs->data[merge_offsets[0]], gradient[i].size[1] );
 		for(size_t j=1; j < mergelen; j++ )
-			array_step(gradient[i].data, gradient[i].data+gradient[i].size[1]*j, expected_vals[j]-outputs->data[j], gradient[i].size[1] );
+		{
+			float *data_j = gradient[i].data + gradient[i].size[1]*merge_offsets[j];
+			array_step(data_0, data_j, expected_vals[j]-outputs->data[merge_offsets[j]], gradient[i].size[1] );
+		}
 	}
 }
 
