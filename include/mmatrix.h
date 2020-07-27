@@ -29,7 +29,7 @@ void copy_mmatrix_size(mmatrix_ut *src, mmatrix_ut *dest );
 void hadamard_matrix_matrix(matrix_ut *m0, matrix_ut *m1, matrix_ut *m_out );
 void set_mul_matrix_matrix_size(matrix_ut *m0, matrix_ut *m1, matrix_ut *m_out );
 void mul_matrix_matrix(matrix_ut *m0, matrix_ut *m1, matrix_ut *m_out );
-void set_mul_mmatrix_matrix_size(mmatrix_ut *mm0, matrix_ut *m1, matrix_ut *mm_out );
+void set_mul_mmatrix_matrix_size(mmatrix_ut *mm0, matrix_ut *m1, mmatrix_ut *mm_out );
 void mul_mmatrix_matrix(mmatrix_ut *mm0, matrix_ut *m1, mmatrix_ut *mm_out );
 void set_mul_matrix_mmatrix(matrix_ut *m0, mmatrix_ut *mm1, mmatrix_ut *mm_out );
 void mul_matrix_mmatrix(matrix_ut *m0, mmatrix_ut *mm1, mmatrix_ut *mm_out );

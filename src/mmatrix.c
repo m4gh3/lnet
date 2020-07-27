@@ -41,7 +41,7 @@ void mul_matrix_matrix(matrix_ut *m0, matrix_ut *m1, matrix_ut *m_out )
 				m_out->data[i_out+j_out] += m0->data[i_in+k0]*m1->data[k1+j_in];
 }
 
-void set_mul_mmatrix_matrix_size(mmatrix_ut *mm0, matrix_ut *m1, matrix_ut *mm_out )
+void set_mul_mmatrix_matrix_size(mmatrix_ut *mm0, matrix_ut *m1, mmatrix_ut *mm_out )
 {
 	mm_out->size[3] = mm0->size[3]; mm_out->size[2] = mm0->size[2];
 	mm_out->size[1] = mm_out->size[2] * m1->size[1]; mm_out->size[0] = mm_out->size[1] * mm0->size[0] / mm0->size[1];

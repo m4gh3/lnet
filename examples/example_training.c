@@ -6,7 +6,7 @@
 #include <string.h>
 
 const int inputs = 2;
-const int outputs = 20;
+const int outputs = 10;
 const int final_outputs = 1;
 const int ev_steps = 10;
 
@@ -245,12 +245,12 @@ int main()
 
 	putchar('\n');
 
-	png_buffer_ut png_buf = (png_buffer_ut){ .pixel_size=3, .width=256, .height=256, .depth=8  };
+	png_buffer_ut png_buf = (png_buffer_ut){ .pixel_size=3, .width=512, .height=512, .depth=8  };
 	png_buffer_init(&png_buf);
 
-	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 255, 0, 255, lnn_plot, &lnn, 0x0000ff );
-	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 255, 0, 255, expected_plot, NULL, 0xff0000 );
-	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 255, 0, 255, triangle_plot, NULL, 0x00ff00 );
+	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 511, 0, 511, lnn_plot, &lnn, 0x0000ff );
+	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 511, 0, 511, expected_plot, NULL, 0xff0000 );
+	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 511, 0, 511, triangle_plot, NULL, 0x00ff00 );
 
 
 	write_png_buf("result.png", &png_buf );
