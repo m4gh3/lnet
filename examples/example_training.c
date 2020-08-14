@@ -162,11 +162,11 @@ int main()
 			print_matrix(&lnn.weights[i], "weights" );
 		}
 	}
-
+	float sample = 0.05;
 	for(size_t trc=0; trc < 400; trc++ )
 	{
 
-		printf("iteration: %lu/%lu\n", trc, 400 );
+		printf("iteration: %lu/%lu\n", trc, 5000 );
 
 		set_matrix_scalar(&lnn.input, 0 );
 		lnn.input.data[0] = (float)rand()/(float)RAND_MAX;
@@ -218,27 +218,32 @@ int main()
 
 		size_t merge_offsets[1] = {0};
 
-		//output_gradients_merge(&expected, &lnn.output, gradient, 1, merge_offsets );
+		output_gradients_merge(&expected, &lnn.output, gradient, 1, merge_offsets );
 		//lnn_gradient_step(mom_gradient, gradient, 0, &lnn );
 
 		float sqsum=0;
 		for(size_t i=0; i < 3; i++ )
 	       		sqsum += array_squares_sum(gradient[i].data, gradient[i].size[1] );
 		sqsum = sqrt(sqsum);
-		for(size_t i=0; i < 3; i++ )
-			array_scale_down(gradient[i].data, sqsum, gradient[i].size[1] );
-		
-		for(size_t i=0; i < 3; i++ )
+		if(sqsum)
 		{
-			array_scale_up(mom_gradient[i].data, 0.9, gradient[i].size[1] );
-			array_step(mom_gradient[i].data, gradient[i].data, 0.1*(expected-lnn.output.data[0]), gradient[i].size[1] );
-			array_step(lnn.weights[i].data, mom_gradient[i].data, 1, gradient[i].size[1] );
+			for(size_t i=0; i < 3; i++ )
+				array_scale_down(gradient[i].data, sqsum, gradient[i].size[1] );
+	
+			//print_mmatrix(&gradient[0], "gradient[0]" );
 
-			for(size_t j=0; j < lnn.weights[i].size[0]; j+=lnn.weights[i].size[1] )
+			for(size_t i=0; i < 3; i++ )
 			{
-				array_abs(lnn.weights[i].data+j, lnn.weights[i].size[1] );
-				float f = array_sum(lnn.weights[i].data+j, lnn.weights[i].size[1] );
-				array_scale_down(lnn.weights[i].data+j, f, lnn.weights[i].size[1] );
+				array_scale_up(mom_gradient[i].data, 0.9, gradient[i].size[1] );
+				array_step(mom_gradient[i].data, gradient[i].data, 0.1*fabs(expected-lnn.output.data[0]), gradient[i].size[1] );
+				array_step(lnn.weights[i].data, mom_gradient[i].data, 1, gradient[i].size[1] );
+
+				for(size_t j=0; j < lnn.weights[i].size[0]; j+=lnn.weights[i].size[1] )
+				{
+					array_abs(lnn.weights[i].data+j, lnn.weights[i].size[1] );
+					float f = array_sum(lnn.weights[i].data+j, lnn.weights[i].size[1] );
+					array_scale_down(lnn.weights[i].data+j, f, lnn.weights[i].size[1] );
+				}
 			}
 		}
 	}
