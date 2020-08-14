@@ -231,7 +231,7 @@ int main()
 		for(size_t i=0; i < 3; i++ )
 		{
 			array_scale_up(mom_gradient[i].data, 0.9, gradient[i].size[1] );
-			array_step(mom_gradient[i].data, gradient[i].data, 0.1*(expected-lnn.output.data[0]/*taylor_merge(&lnn.output, 0, 4 )*/), gradient[i].size[1] );
+			array_step(mom_gradient[i].data, gradient[i].data, 0.1*(expected-lnn.output.data[0]), gradient[i].size[1] );
 			array_step(lnn.weights[i].data, mom_gradient[i].data, 1, gradient[i].size[1] );
 
 			for(size_t j=0; j < lnn.weights[i].size[0]; j+=lnn.weights[i].size[1] )
