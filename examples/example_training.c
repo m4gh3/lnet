@@ -47,7 +47,7 @@ float triangle_plot(float x, void *data )
 	return 0.001*triangle(x, 1 );
 }
 
-void lnn_gradient_step(mmatrix_ut *mom_gradient, mmatrix_ut *gradient, size_t gradient_offs, lnn_ut *lnn )
+void lnn_gradient_step(mmatrix_ut *mom_gradient, mmatrix_ut *gradient, float error_dist, size_t gradient_offs, lnn_ut *lnn )
 {
 	float sqsum=0;
 	for(size_t i=0; i < 3; i++ )
@@ -65,7 +65,7 @@ void lnn_gradient_step(mmatrix_ut *mom_gradient, mmatrix_ut *gradient, size_t gr
 		{
 			float *gradient_data = gradient[i].data + gradient[i].size[1]*gradient_offs;
 			array_scale_up(mom_gradient[i].data, 0.9, gradient[i].size[1] );
-			array_step(mom_gradient[i].data, gradient_data, 0.1, gradient[i].size[1] );
+			array_step(mom_gradient[i].data, gradient_data, 0.1*error_dist, gradient[i].size[1] );
 			array_step(lnn->weights[i].data, mom_gradient[i].data, 1, gradient[i].size[1] );
 
 			for(size_t j=0; j < lnn->weights[i].size[0]; j+=lnn->weights[i].size[1] )
@@ -218,10 +218,10 @@ int main()
 
 		size_t merge_offsets[1] = {0};
 
-		output_gradients_merge(&expected, &lnn.output, gradient, 1, merge_offsets );
-		//lnn_gradient_step(mom_gradient, gradient, 0, &lnn );
+		float error_dist = output_gradients_merge(&expected, &lnn.output, gradient, 1, merge_offsets );
+		lnn_gradient_step(mom_gradient, gradient, error_dist, 0,  &lnn );
 
-		float sqsum=0;
+		/*float sqsum=0;
 		for(size_t i=0; i < 3; i++ )
 	       		sqsum += array_squares_sum(gradient[i].data, gradient[i].size[1] );
 		sqsum = sqrt(sqsum);
@@ -245,7 +245,7 @@ int main()
 					array_scale_down(lnn.weights[i].data+j, f, lnn.weights[i].size[1] );
 				}
 			}
-		}
+		}*/
 	}
 
 	putchar('\n');
