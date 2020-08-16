@@ -12,6 +12,10 @@ const int ev_steps = 10;
 
 typedef struct
 {
+	int inputs;
+	int outputs;
+	int final_outputs;
+	int ev_steps;
 	matrix_ut weights[3];
 	matrix_ut output, input, choices[4];
 	matrix_ut pre_output;
@@ -21,9 +25,8 @@ float lnn_plot(float x, lnn_ut *lnn )
 {
 	set_matrix_scalar(&lnn->input, 0 );
 	lnn->input.data[0] = x;
-	lnn->input.data[1] = triangle(x, 1 ); //lnn->input.data[0] > 0.5 ? 1 : 0;
-	//lnn->input.data[0] = 2*fmod(x, 0.5 );
-		
+	lnn->input.data[1] = triangle(x, 1 );
+
 	for(size_t ev_step=0; ev_step < ev_steps; ev_step++ )
 	{
 		for(size_t i=0; i < 3; i++ )
@@ -40,7 +43,7 @@ float lnn_plot(float x, lnn_ut *lnn )
 }
 
 float expected_plot(float x, void *data )
-{ return 0.001/(1+exp(-8*x+4)); /*0.001*sin(2*M_PI*x*x);*/ }
+{ return /*0.001/(1+exp(-8*x+4));*/ 0.001*sin(2*M_PI*x); }
 
 float triangle_plot(float x, void *data )
 {
@@ -83,6 +86,10 @@ int main()
 
 	lnn_ut lnn = (lnn_ut)
 	{
+		.inputs = 2,
+		.outputs = 10,
+		.final_outputs = 1,
+		.ev_steps = 10,
 		.weights =
 		{ 
 			(matrix_ut){ .size={ outputs*(inputs+outputs+2), inputs+outputs+2 } },
@@ -163,24 +170,23 @@ int main()
 		}
 	}
 	float sample = 0.05;
-	for(size_t trc=0; trc < 400; trc++ )
+	for(size_t trc=0; trc < 5000; trc++ )
 	{
 
 		printf("iteration: %lu/%lu\n", trc, 5000 );
 
 		set_matrix_scalar(&lnn.input, 0 );
 		lnn.input.data[0] = (float)rand()/(float)RAND_MAX;
-		//float expected = 0.001*sin(2*M_PI*lnn.input.data[0]*lnn.input.data[0]);
-		float expected = 0.001/(1+exp(-8*lnn.input.data[0]+4));
-		lnn.input.data[1] = triangle(lnn.input.data[0], 1 ); //lnn.input.data[0] > 0.5 ? 1 : 0;
-		//lnn.input.data[0] = 2*fmod(lnn.input.data[0], 0.5 );
+		float expected = 0.001*sin(2*M_PI*lnn.input.data[0]);
+		//float expected = 0.001/(1+exp(-8*lnn.input.data[0]+4));
+		lnn.input.data[1] = triangle(lnn.input.data[0], 1 );
 
 		for(size_t i=0; i < 3; i++ )
 			set_mmatrix_scalar(&in_gradient[i], 0 );
 
 		//print_matrix(&lnn.input, "input" );
 	
-		for(size_t ev_step=0; ev_step < ev_steps; ev_step++ )
+		for(size_t ev_step=0; ev_step < lnn.ev_steps; ev_step++ )
 		{
 			for(size_t i=0; i < 3; i++ )
 				mul_matrix_matrix(&lnn.weights[i], &lnn.input, &lnn.choices[i] );
@@ -208,9 +214,9 @@ int main()
 				sum_mmatrix_mmatrix(&gradient[i], &lodelta_mul_out, &gradient[i] );
 				hadamard_mmatrix_matrix(&choices_ders[1], &lnn.choices[2], &lodelta_mul_out );
 				sum_mmatrix_mmatrix(&gradient[i], &lodelta_mul_out, &gradient[i] );
-				memcpy(in_gradient[i].data+inputs*(in_gradient[i].size[1]), gradient[i].data, gradient[i].size[0]*sizeof(float) );
+				memcpy(in_gradient[i].data+lnn.inputs*(in_gradient[i].size[1]), gradient[i].data, gradient[i].size[0]*sizeof(float) );
 			}
-			memcpy(lnn.input.data+inputs, lnn.output.data, lnn.output.size[0]*sizeof(float) );
+			memcpy(lnn.input.data+lnn.inputs, lnn.output.data, lnn.output.size[0]*sizeof(float) );
 		}
 			
 		gradient_taylor_merge(gradient, 0, 4 );
@@ -221,31 +227,6 @@ int main()
 		float error_dist = output_gradients_merge(&expected, &lnn.output, gradient, 1, merge_offsets );
 		lnn_gradient_step(mom_gradient, gradient, error_dist, 0,  &lnn );
 
-		/*float sqsum=0;
-		for(size_t i=0; i < 3; i++ )
-	       		sqsum += array_squares_sum(gradient[i].data, gradient[i].size[1] );
-		sqsum = sqrt(sqsum);
-		if(sqsum)
-		{
-			for(size_t i=0; i < 3; i++ )
-				array_scale_down(gradient[i].data, sqsum, gradient[i].size[1] );
-	
-			//print_mmatrix(&gradient[0], "gradient[0]" );
-
-			for(size_t i=0; i < 3; i++ )
-			{
-				array_scale_up(mom_gradient[i].data, 0.9, gradient[i].size[1] );
-				array_step(mom_gradient[i].data, gradient[i].data, 0.1*fabs(expected-lnn.output.data[0]), gradient[i].size[1] );
-				array_step(lnn.weights[i].data, mom_gradient[i].data, 1, gradient[i].size[1] );
-
-				for(size_t j=0; j < lnn.weights[i].size[0]; j+=lnn.weights[i].size[1] )
-				{
-					array_abs(lnn.weights[i].data+j, lnn.weights[i].size[1] );
-					float f = array_sum(lnn.weights[i].data+j, lnn.weights[i].size[1] );
-					array_scale_down(lnn.weights[i].data+j, f, lnn.weights[i].size[1] );
-				}
-			}
-		}*/
 	}
 
 	putchar('\n');
@@ -253,9 +234,9 @@ int main()
 	png_buffer_ut png_buf = (png_buffer_ut){ .pixel_size=3, .width=512, .height=512, .depth=8  };
 	png_buffer_init(&png_buf);
 
-	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 511, 0, 511, lnn_plot, &lnn, 0x0000ff );
-	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 511, 0, 511, expected_plot, NULL, 0xff0000 );
-	plot(&png_buf, 0, 1, 0.000, 0.001, 0, 511, 0, 511, triangle_plot, NULL, 0x00ff00 );
+	plot(&png_buf, 0, 1, -0.001, 0.001, 0, 511, 0, 511, lnn_plot, &lnn, 0x0000ff );
+	plot(&png_buf, 0, 1, -0.001, 0.001, 0, 511, 0, 511, expected_plot, NULL, 0xff0000 );
+	plot(&png_buf, 0, 1, -0.001, 0.001, 0, 511, 0, 511, triangle_plot, NULL, 0x00ff00 );
 
 
 	write_png_buf("result.png", &png_buf );
