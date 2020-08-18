@@ -5,11 +5,6 @@
 #include <time.h>
 #include <string.h>
 
-const int inputs = 2;
-const int outputs = 10;
-const int final_outputs = 1;
-const int ev_steps = 10;
-
 typedef struct
 {
 	int inputs;
@@ -27,7 +22,7 @@ float lnn_plot(float x, lnn_ut *lnn )
 	lnn->input.data[0] = x;
 	lnn->input.data[1] = triangle(x, 1 );
 
-	for(size_t ev_step=0; ev_step < ev_steps; ev_step++ )
+	for(size_t ev_step=0; ev_step < lnn->ev_steps; ev_step++ )
 	{
 		for(size_t i=0; i < 3; i++ )
 			mul_matrix_matrix(&lnn->weights[i], &lnn->input, &lnn->choices[i] );
@@ -36,7 +31,7 @@ float lnn_plot(float x, lnn_ut *lnn )
 		hadamard_matrix_matrix(&lnn->choices[3], &lnn->choices[0], &lnn->output );
 		hadamard_matrix_matrix(&lnn->choices[2], &lnn->choices[1], &lnn->pre_output );
 		sum_matrix_matrix(&lnn->pre_output, &lnn->output, &lnn->output );
-		memcpy(lnn->input.data+inputs, lnn->output.data, lnn->output.size[0]*sizeof(float) );
+		memcpy(lnn->input.data+lnn->inputs, lnn->output.data, lnn->output.size[0]*sizeof(float) );
 	}
 	float retval = lnn->output.data[0]-lnn->output.data[1]+lnn->output.data[2]-lnn->output.data[3];
 	return retval;
@@ -92,12 +87,12 @@ int main()
 		.ev_steps = 10,
 		.weights =
 		{ 
-			(matrix_ut){ .size={ outputs*(inputs+outputs+2), inputs+outputs+2 } },
-			(matrix_ut){ .size={ outputs*(inputs+outputs+2), inputs+outputs+2 } },
-			(matrix_ut){ .size={ outputs*(inputs+outputs+2), inputs+outputs+2 } }
+			(matrix_ut){ .size={ lnn.outputs*(lnn.inputs+lnn.outputs+2), lnn.inputs+lnn.outputs+2 } },
+			(matrix_ut){ .size={ lnn.outputs*(lnn.inputs+lnn.outputs+2), lnn.inputs+lnn.outputs+2 } },
+			(matrix_ut){ .size={ lnn.outputs*(lnn.inputs+lnn.outputs+2), lnn.inputs+lnn.outputs+2 } }
 		},
-		.output = (matrix_ut){ .size={outputs,1} },
-		.input = (matrix_ut){ .size={(inputs+outputs+2),1} }
+		.output = (matrix_ut){ .size={lnn.outputs,1} },
+		.input = (matrix_ut){ .size={(lnn.inputs+lnn.outputs+2),1} }
 	};
 
 	mmatrix_ut in_gradient[3] =
