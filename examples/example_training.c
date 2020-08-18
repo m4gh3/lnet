@@ -76,6 +76,23 @@ void lnn_gradient_step(mmatrix_ut *mom_gradient, mmatrix_ut *gradient, float err
 	}
 }
 
+void lnn_init(lnn_ut *lnn)
+{
+	for(size_t i=0; i < 3; i++ )
+		matrix_alloc(&lnn->weights[i]);
+	matrix_alloc(&lnn->output);
+	matrix_alloc(&lnn->input);
+	set_matrix_scalar(&lnn->input, 0 );
+	lnn->input.data[lnn->input.size[0]-1] = 1;
+	for(size_t i=0; i < 4; i++ )
+	{
+		copy_matrix_size(&lnn->output, &lnn->choices[i] );
+		matrix_alloc(&lnn->choices[i]);
+	}
+	copy_matrix_size(&lnn->output, &lnn->pre_output );
+	matrix_alloc(&lnn->pre_output);
+}
+
 int main()
 {
 
@@ -105,19 +122,15 @@ int main()
 	mmatrix_ut gradient[3]; //dO/dC0, dO/dC1, dO/dC2
 	mmatrix_ut lodelta_mul_out;
 	mmatrix_ut choices_ders[3];
-	
-	for(size_t i=0; i<3; i++ )
-		matrix_alloc(&lnn.weights[i]);
-	matrix_alloc(&lnn.output); matrix_alloc(&lnn.input); set_matrix_scalar(&lnn.input, 0 ); lnn.input.data[lnn.input.size[0]-1] = 1;
+
+	lnn_init(&lnn);	
 	set_mul_lodelta_matrix(&lnn.weights[0], &lnn.input, &lodelta_mul_out );
 	mmatrix_alloc(&lodelta_mul_out);
 	for(size_t i=0; i < 3; i++ )
 	{
-		copy_matrix_size(&lnn.output, &lnn.choices[i] );
 		copy_mmatrix_size(&lodelta_mul_out, &choices_ders[i] );
 		copy_mmatrix_size(&lodelta_mul_out, &gradient[i] );
 		copy_mmatrix_size(&lodelta_mul_out, &mom_gradient[i] );
-		matrix_alloc(&lnn.choices[i]);
 		mmatrix_alloc(&choices_ders[i]);
 		mmatrix_alloc(&in_gradient[i]);
 		mmatrix_alloc(&mom_gradient[i]);
@@ -125,11 +138,7 @@ int main()
 		set_mmatrix_scalar(&in_gradient[i], 0 );
 		mmatrix_alloc(&gradient[i]);
 	}
-	copy_matrix_size(&lnn.output, &lnn.choices[3] );
-	copy_matrix_size(&lnn.output, &lnn.pre_output );
-	matrix_alloc(&lnn.choices[3]);
-	matrix_alloc(&lnn.pre_output);
-
+	
 	srand(time(0));
 
 	while(1)
