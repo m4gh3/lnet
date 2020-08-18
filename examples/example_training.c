@@ -16,6 +16,37 @@ typedef struct
 	matrix_ut pre_output;
 } lnn_ut;
 
+void lnn_init(lnn_ut *lnn)
+{
+	for(size_t i=0; i < 3; i++ )
+		matrix_alloc(&lnn->weights[i]);
+	matrix_alloc(&lnn->output);
+	matrix_alloc(&lnn->input);
+	set_matrix_scalar(&lnn->input, 0 );
+	lnn->input.data[lnn->input.size[0]-1] = 1;
+	for(size_t i=0; i < 4; i++ )
+	{
+		copy_matrix_size(&lnn->output, &lnn->choices[i] );
+		matrix_alloc(&lnn->choices[i]);
+	}
+	copy_matrix_size(&lnn->output, &lnn->pre_output );
+	matrix_alloc(&lnn->pre_output);
+}
+
+void lnn_evolve_step(lnn_ut *lnn)
+{
+	for(size_t i=0; i < 3; i++ )
+		mul_matrix_matrix(&lnn->weights[i], &lnn->input, &lnn->choices[i] );
+	mul_matrix_scalar(&lnn->choices[2], -1, &lnn->choices[3] );
+	sum_matrix_scalar(&lnn->choices[3], 1, &lnn->choices[3] );
+	hadamard_matrix_matrix(&lnn->choices[3], &lnn->choices[0], &lnn->output );
+	hadamard_matrix_matrix(&lnn->choices[2], &lnn->choices[1], &lnn->pre_output );
+	sum_matrix_matrix(&lnn->pre_output, &lnn->output, &lnn->output );
+}
+
+void lnn_evolve_copy(lnn_ut *lnn)
+{ memcpy(lnn->input.data+lnn->inputs, lnn->output.data, lnn->output.size[0]*sizeof(float) ); }
+
 float lnn_plot(float x, lnn_ut *lnn )
 {
 	set_matrix_scalar(&lnn->input, 0 );
@@ -24,14 +55,8 @@ float lnn_plot(float x, lnn_ut *lnn )
 
 	for(size_t ev_step=0; ev_step < lnn->ev_steps; ev_step++ )
 	{
-		for(size_t i=0; i < 3; i++ )
-			mul_matrix_matrix(&lnn->weights[i], &lnn->input, &lnn->choices[i] );
-		mul_matrix_scalar(&lnn->choices[2], -1, &lnn->choices[3] );
-		sum_matrix_scalar(&lnn->choices[3], 1, &lnn->choices[3] );
-		hadamard_matrix_matrix(&lnn->choices[3], &lnn->choices[0], &lnn->output );
-		hadamard_matrix_matrix(&lnn->choices[2], &lnn->choices[1], &lnn->pre_output );
-		sum_matrix_matrix(&lnn->pre_output, &lnn->output, &lnn->output );
-		memcpy(lnn->input.data+lnn->inputs, lnn->output.data, lnn->output.size[0]*sizeof(float) );
+		lnn_evolve_step(lnn);
+		lnn_evolve_copy(lnn);
 	}
 	float retval = lnn->output.data[0]-lnn->output.data[1]+lnn->output.data[2]-lnn->output.data[3];
 	return retval;
@@ -74,23 +99,6 @@ void lnn_gradient_step(mmatrix_ut *mom_gradient, mmatrix_ut *gradient, float err
 			}
 		}
 	}
-}
-
-void lnn_init(lnn_ut *lnn)
-{
-	for(size_t i=0; i < 3; i++ )
-		matrix_alloc(&lnn->weights[i]);
-	matrix_alloc(&lnn->output);
-	matrix_alloc(&lnn->input);
-	set_matrix_scalar(&lnn->input, 0 );
-	lnn->input.data[lnn->input.size[0]-1] = 1;
-	for(size_t i=0; i < 4; i++ )
-	{
-		copy_matrix_size(&lnn->output, &lnn->choices[i] );
-		matrix_alloc(&lnn->choices[i]);
-	}
-	copy_matrix_size(&lnn->output, &lnn->pre_output );
-	matrix_alloc(&lnn->pre_output);
 }
 
 int main()
@@ -192,13 +200,8 @@ int main()
 	
 		for(size_t ev_step=0; ev_step < lnn.ev_steps; ev_step++ )
 		{
-			for(size_t i=0; i < 3; i++ )
-				mul_matrix_matrix(&lnn.weights[i], &lnn.input, &lnn.choices[i] );
-			mul_matrix_scalar(&lnn.choices[2], -1, &lnn.choices[3] );
-			sum_matrix_scalar(&lnn.choices[3], 1, &lnn.choices[3] );
-			hadamard_matrix_matrix(&lnn.choices[3], &lnn.choices[0], &lnn.output );
-			hadamard_matrix_matrix(&lnn.choices[2], &lnn.choices[1], &lnn.pre_output );
-			sum_matrix_matrix(&lnn.pre_output, &lnn.output, &lnn.output );
+
+			lnn_evolve_step(&lnn);
 
 			//print_matrix(&output, "output" );
 		
@@ -220,7 +223,9 @@ int main()
 				sum_mmatrix_mmatrix(&gradient[i], &lodelta_mul_out, &gradient[i] );
 				memcpy(in_gradient[i].data+lnn.inputs*(in_gradient[i].size[1]), gradient[i].data, gradient[i].size[0]*sizeof(float) );
 			}
-			memcpy(lnn.input.data+lnn.inputs, lnn.output.data, lnn.output.size[0]*sizeof(float) );
+
+			lnn_evolve_copy(&lnn);
+
 		}
 			
 		gradient_taylor_merge(gradient, 0, 4 );
