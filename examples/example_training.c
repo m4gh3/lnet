@@ -74,8 +74,35 @@ void lnn_evolve_step(lnn_ut *lnn)
 	sum_matrix_matrix(&lnn->pre_output, &lnn->output, &lnn->output );
 }
 
+void lnn_train_evolve_step(lnn_train_data_ut *lnn_train_data)
+{
+			for(size_t i=0; i < 3; i++ )
+			{
+				set_mmatrix_scalar(&lnn_train_data->gradient[i], 0 );
+				for(size_t j=0; j < 3; j++ )
+					mul_matrix_mmatrix(&lnn_train_data->lnn->weights[j], &lnn_train_data->in_gradient[j], &lnn_train_data->choices_ders[j] );
+				mul_lodelta_matrix(&lnn_train_data->lnn->weights[i], &lnn_train_data->lnn->input, &lnn_train_data->lodelta_mul_out );
+				sum_mmatrix_mmatrix(&lnn_train_data->lodelta_mul_out, &lnn_train_data->choices_ders[i], &lnn_train_data->choices_ders[i] );
+				sum_mmatrix_scalar(&lnn_train_data->choices_ders[2], 0, &lnn_train_data->gradient[i] );
+				mul_mmatrix_scalar(&lnn_train_data->gradient[i], -1, &lnn_train_data->gradient[i] );
+				hadamard_mmatrix_matrix(&lnn_train_data->gradient[i], &lnn_train_data->lnn->choices[0], &lnn_train_data->gradient[i] );
+				hadamard_mmatrix_matrix(&lnn_train_data->choices_ders[0], &lnn_train_data->lnn->choices[3], &lnn_train_data->lodelta_mul_out );
+				sum_mmatrix_mmatrix(&lnn_train_data->gradient[i], &lnn_train_data->lodelta_mul_out, &lnn_train_data->gradient[i] );
+				hadamard_mmatrix_matrix(&lnn_train_data->choices_ders[2], &lnn_train_data->lnn->choices[1], &lnn_train_data->lodelta_mul_out );
+				sum_mmatrix_mmatrix(&lnn_train_data->gradient[i], &lnn_train_data->lodelta_mul_out, &lnn_train_data->gradient[i] );
+				hadamard_mmatrix_matrix(&lnn_train_data->choices_ders[1], &lnn_train_data->lnn->choices[2], &lnn_train_data->lodelta_mul_out );
+				sum_mmatrix_mmatrix(&lnn_train_data->gradient[i], &lnn_train_data->lodelta_mul_out, &lnn_train_data->gradient[i] );
+			}
+}
+
 void lnn_evolve_copy(lnn_ut *lnn)
 { memcpy(lnn->input.data+lnn->inputs, lnn->output.data, lnn->output.size[0]*sizeof(float) ); }
+
+void lnn_train_evolve_copy(lnn_train_data_ut *lnn_train_data)
+{
+	for(size_t i=0; i < 3; i++ )
+		memcpy(lnn_train_data->in_gradient[i].data+lnn_train_data->lnn->inputs*(lnn_train_data->in_gradient[i].size[1]), lnn_train_data->gradient[i].data, lnn_train_data->gradient[i].size[0]*sizeof(float) );
+}
 
 float lnn_plot(float x, lnn_ut *lnn )
 {
@@ -149,8 +176,19 @@ int main()
 		.output = (matrix_ut){ .size={lnn.outputs,1} },
 		.input = (matrix_ut){ .size={(lnn.inputs+lnn.outputs+2),1} }
 	};
+	
+	lnn_train_data_ut lnn_train_data = (lnn_train_data_ut)
+	{
+		.lnn = &lnn,
+		.in_gradient = 
+		{
+			(mmatrix_ut){ .size={ lnn.weights[0].size[0]*lnn.weights[0].size[1], lnn.weights[0].size[0], lnn.weights[0].size[0], lnn.weights[0].size[1] } },
+			(mmatrix_ut){ .size={ lnn.weights[0].size[0]*lnn.weights[0].size[1], lnn.weights[0].size[0], lnn.weights[0].size[0], lnn.weights[0].size[1] } },
+			(mmatrix_ut){ .size={ lnn.weights[0].size[0]*lnn.weights[0].size[1], lnn.weights[0].size[0], lnn.weights[0].size[0], lnn.weights[0].size[1] } }
+		}
+	};
 
-	mmatrix_ut in_gradient[3] =
+	/*mmatrix_ut in_gradient[3] =
 	{
 		(mmatrix_ut){ .size={ lnn.weights[0].size[0]*lnn.weights[0].size[1], lnn.weights[0].size[0], lnn.weights[0].size[0], lnn.weights[0].size[1] } },
 		(mmatrix_ut){ .size={ lnn.weights[0].size[0]*lnn.weights[0].size[1], lnn.weights[0].size[0], lnn.weights[0].size[0], lnn.weights[0].size[1] } },
@@ -159,10 +197,10 @@ int main()
 	mmatrix_ut mom_gradient[3];
 	mmatrix_ut gradient[3]; //dO/dC0, dO/dC1, dO/dC2
 	mmatrix_ut lodelta_mul_out;
-	mmatrix_ut choices_ders[3];
+	mmatrix_ut choices_ders[3];*/
 
 	lnn_init(&lnn);	
-	set_mul_lodelta_matrix(&lnn.weights[0], &lnn.input, &lodelta_mul_out );
+	/*set_mul_lodelta_matrix(&lnn.weights[0], &lnn.input, &lodelta_mul_out );
 	mmatrix_alloc(&lodelta_mul_out);
 	for(size_t i=0; i < 3; i++ )
 	{
@@ -175,7 +213,8 @@ int main()
 		set_mmatrix_scalar(&mom_gradient[i], 0 );
 		set_mmatrix_scalar(&in_gradient[i], 0 );
 		mmatrix_alloc(&gradient[i]);
-	}
+	}*/
+	lnn_train_data_init(&lnn_train_data);	
 	
 	srand(time(0));
 
@@ -224,7 +263,7 @@ int main()
 		lnn.input.data[1] = triangle(lnn.input.data[0], 1 );
 
 		for(size_t i=0; i < 3; i++ )
-			set_mmatrix_scalar(&in_gradient[i], 0 );
+			set_mmatrix_scalar(&lnn_train_data.in_gradient[i], 0 );
 
 		//print_matrix(&lnn.input, "input" );
 	
@@ -235,7 +274,7 @@ int main()
 
 			//print_matrix(&output, "output" );
 		
-			for(size_t i=0; i < 3; i++ )
+			/*for(size_t i=0; i < 3; i++ )
 			{
 				set_mmatrix_scalar(&gradient[i], 0 );
 				for(size_t j=0; j < 3; j++ )
@@ -252,19 +291,21 @@ int main()
 				hadamard_mmatrix_matrix(&choices_ders[1], &lnn.choices[2], &lodelta_mul_out );
 				sum_mmatrix_mmatrix(&gradient[i], &lodelta_mul_out, &gradient[i] );
 				memcpy(in_gradient[i].data+lnn.inputs*(in_gradient[i].size[1]), gradient[i].data, gradient[i].size[0]*sizeof(float) );
-			}
+			}*/
+			lnn_train_evolve_step(&lnn_train_data);
+			lnn_train_evolve_copy(&lnn_train_data);
 
 			lnn_evolve_copy(&lnn);
 
 		}
 			
-		gradient_taylor_merge(gradient, 0, 4 );
+		gradient_taylor_merge(lnn_train_data.gradient, 0, 4 );
 		lnn.output.data[0] = taylor_merge(&lnn.output, 0, 4 );
 
 		size_t merge_offsets[1] = {0};
 
-		float error_dist = output_gradients_merge(&expected, &lnn.output, gradient, 1, merge_offsets );
-		lnn_gradient_step(mom_gradient, gradient, error_dist, 0,  &lnn );
+		float error_dist = output_gradients_merge(&expected, &lnn.output, lnn_train_data.gradient, 1, merge_offsets );
+		lnn_gradient_step(lnn_train_data.mom_gradient, lnn_train_data.gradient, error_dist, 0,  &lnn );
 
 	}
 
