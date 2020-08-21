@@ -16,6 +16,17 @@ typedef struct
 	matrix_ut pre_output;
 } lnn_ut;
 
+typedef struct
+{
+	lnn_ut *lnn;
+	mmatrix_ut in_gradient[3];
+	mmatrix_ut mom_gradient[3];
+	mmatrix_ut gradient[3]; //dO/dC0, dO/dC1, dO/dC2
+	mmatrix_ut lodelta_mul_out;
+	mmatrix_ut choices_ders[3];
+
+} lnn_train_data_ut;
+
 void lnn_init(lnn_ut *lnn)
 {
 	for(size_t i=0; i < 3; i++ )
@@ -31,6 +42,25 @@ void lnn_init(lnn_ut *lnn)
 	}
 	copy_matrix_size(&lnn->output, &lnn->pre_output );
 	matrix_alloc(&lnn->pre_output);
+}
+
+void lnn_train_data_init(lnn_train_data_ut *lnn_train_data )
+{
+	set_mul_lodelta_matrix(&lnn_train_data->lnn->weights[0], &lnn_train_data->lnn->input, &lnn_train_data->lodelta_mul_out );
+	mmatrix_alloc(&lnn_train_data->lodelta_mul_out);
+	for(size_t i=0; i < 3; i++ )
+	{
+		copy_mmatrix_size(&lnn_train_data->lodelta_mul_out, &lnn_train_data->choices_ders[i] );
+		copy_mmatrix_size(&lnn_train_data->lodelta_mul_out, &lnn_train_data->gradient[i] );
+		copy_mmatrix_size(&lnn_train_data->lodelta_mul_out, &lnn_train_data->mom_gradient[i] );
+		mmatrix_alloc(&lnn_train_data->choices_ders[i]);
+		mmatrix_alloc(&lnn_train_data->in_gradient[i]);
+		mmatrix_alloc(&lnn_train_data->mom_gradient[i]);
+		set_mmatrix_scalar(&lnn_train_data->mom_gradient[i], 0 );
+		set_mmatrix_scalar(&lnn_train_data->in_gradient[i], 0 );
+		mmatrix_alloc(&lnn_train_data->gradient[i]);
+	}
+
 }
 
 void lnn_evolve_step(lnn_ut *lnn)
