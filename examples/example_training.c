@@ -37,27 +37,11 @@ int main()
 		.inputs = 2,
 		.outputs = 10,
 		.final_outputs = 1,
-		.ev_steps = 10,
-		.weights =
-		{ 
-			(matrix_ut){ .size={ lnn.outputs*(lnn.inputs+lnn.outputs+2), lnn.inputs+lnn.outputs+2 } },
-			(matrix_ut){ .size={ lnn.outputs*(lnn.inputs+lnn.outputs+2), lnn.inputs+lnn.outputs+2 } },
-			(matrix_ut){ .size={ lnn.outputs*(lnn.inputs+lnn.outputs+2), lnn.inputs+lnn.outputs+2 } }
-		},
-		.output = (matrix_ut){ .size={lnn.outputs,1} },
-		.input = (matrix_ut){ .size={(lnn.inputs+lnn.outputs+2),1} }
+		.ev_steps = 10
 	};
 	
 	lnn_train_data_ut lnn_train_data = (lnn_train_data_ut)
-	{
-		.lnn = &lnn,
-		.in_gradient = 
-		{
-			(mmatrix_ut){ .size={ lnn.weights[0].size[0]*lnn.weights[0].size[1], lnn.weights[0].size[0], lnn.weights[0].size[0], lnn.weights[0].size[1] } },
-			(mmatrix_ut){ .size={ lnn.weights[0].size[0]*lnn.weights[0].size[1], lnn.weights[0].size[0], lnn.weights[0].size[0], lnn.weights[0].size[1] } },
-			(mmatrix_ut){ .size={ lnn.weights[0].size[0]*lnn.weights[0].size[1], lnn.weights[0].size[0], lnn.weights[0].size[0], lnn.weights[0].size[1] } }
-		}
-	};
+	{ .lnn = &lnn };
 
 	lnn_init(&lnn);	
 	lnn_train_data_init(&lnn_train_data);	
@@ -96,7 +80,7 @@ int main()
 			print_matrix(&lnn.weights[i], "weights" );
 		}
 	}
-	float sample = 0.05;
+
 	for(size_t trc=0; trc < 5000; trc++ )
 	{
 

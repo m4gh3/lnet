@@ -3,7 +3,12 @@
 void lnn_init(lnn_ut *lnn)
 {
 	for(size_t i=0; i < 3; i++ )
+	{
+		lnn->weights[i] = (matrix_ut) { .size={ lnn->outputs*(lnn->inputs+lnn->outputs+2), lnn->inputs+lnn->outputs+2 } };
 		matrix_alloc(&lnn->weights[i]);
+	}
+	lnn->output = (matrix_ut) { .size={lnn->outputs,1} };
+	lnn->input = (matrix_ut){ .size={(lnn->inputs+lnn->outputs+2),1} };
 	matrix_alloc(&lnn->output);
 	matrix_alloc(&lnn->input);
 	set_matrix_scalar(&lnn->input, 0 );
@@ -19,7 +24,12 @@ void lnn_init(lnn_ut *lnn)
 
 void lnn_train_data_init(lnn_train_data_ut *lnn_train_data )
 {
-	set_mul_lodelta_matrix(&lnn_train_data->lnn->weights[0], &lnn_train_data->lnn->input, &lnn_train_data->lodelta_mul_out );
+	lnn_ut *lnn = lnn_train_data->lnn;
+	for(size_t i=0; i < 3; i++ )
+	{
+		lnn_train_data->in_gradient[i] = (mmatrix_ut){ .size={ lnn->weights[0].size[0]*lnn->weights[0].size[1], lnn->weights[0].size[0], lnn->weights[0].size[0], lnn->weights[0].size[1] } };
+	}
+	set_mul_lodelta_matrix(&lnn->weights[0], &lnn->input, &lnn_train_data->lodelta_mul_out );
 	mmatrix_alloc(&lnn_train_data->lodelta_mul_out);
 	for(size_t i=0; i < 3; i++ )
 	{
